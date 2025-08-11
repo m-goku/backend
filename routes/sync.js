@@ -62,15 +62,8 @@ router.post("/push", async (req, res) => {
     ...(farmers.created || []),
     ...(farmers.updated || []),
   ]) {
-    await Farmer.findByIdAndUpdate(
-      farmer.id,
-      {
-        ...farmer,
-        _id: farmer.id,
-        updated_at: now,
-      },
-      { upsert: true }
-    );
+    // const cleaned = sanitizeFarmer(farmer);
+    await Farmer.findByIdAndUpdate(farmer._id, farmer, { upsert: true });
   }
 
   // Handle deleted
