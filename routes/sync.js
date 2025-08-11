@@ -13,7 +13,7 @@ router.get("/pull", async (req, res) => {
 
   const serialize = (doc) => {
     const { _id, _status, _changed, __v, ...rest } = doc.toObject();
-    return { id: _id.toString(), ...rest };
+    return { id: _id, ...rest };
   };
 
   if (lastPulledAt === 0) {
