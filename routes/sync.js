@@ -20,6 +20,7 @@ router.get("/pull", async (req, res) => {
   let deleted = [];
 
   const serialize = (doc) => {
+    if (!doc) return null;
     const { _id, _status, _changed, __v, ...rest } = doc.toObject();
     return { id: _id.toString(), ...rest };
   };
