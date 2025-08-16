@@ -1,5 +1,6 @@
-import fs from "fs";
-import path from "path";
+// authLogger.js
+const fs = require("fs");
+const path = require("path");
 
 // Create logs folder if not exists
 const logsDir = path.join(process.cwd(), "logs");
@@ -8,7 +9,7 @@ if (!fs.existsSync(logsDir)) {
 }
 
 // Logger middleware
-export function authLogger(req, res, next) {
+function authLogger(req, res, next) {
   const authHeader = req.headers["authorization"] || "NO_AUTH_HEADER";
 
   // Generate filename based on current date (YYYY-MM-DD)
@@ -25,3 +26,5 @@ export function authLogger(req, res, next) {
 
   next();
 }
+
+module.exports = authLogger;
