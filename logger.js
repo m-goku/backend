@@ -18,7 +18,7 @@ function authLogger(req, res, next) {
 
   // Log entry with timestamp
   const logEntry = `[${new Date().toISOString()}] | Synced By: ${authHeader}\n`;
-
+  console.log(logEntry);
   // Append entry to daily log file
   fs.appendFile(logFile, logEntry, (err) => {
     if (err) console.error("Error writing log:", err);
