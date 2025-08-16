@@ -17,7 +17,9 @@ function authLogger(req, res, next) {
   const logFile = path.join(logsDir, `auth-${today}.txt`);
 
   // Log entry with timestamp
-  const logEntry = `[${new Date().toISOString()}] | Synced By: ${authHeader}\n`;
+  const logEntry = `[${new Date().toISOString()}] ${req.method} ${
+    req.originalUrl
+  } - | Synced By: ${authHeader}\n`;
   console.log(logEntry);
   // Append entry to daily log file
   fs.appendFile(logFile, logEntry, (err) => {
