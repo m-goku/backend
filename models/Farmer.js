@@ -12,17 +12,24 @@ const FarmerSchema = new mongoose.Schema(
     prefinance: Number,
     balance: Number,
 
-    // Operational fields (all optional)
+    // Operational fields
     repayment_status: {
       type: String,
+      default: "pending", // optional: helps if you need statuses
+    },
+    zone: {
+      type: String,
+      default: "",
     },
     total_kg_brought: {
       type: Number,
       min: 0,
+      default: 0,
     },
     total_amount: {
       type: Number,
       min: 0,
+      default: 0,
     },
     crop_type: {
       type: String,
@@ -54,13 +61,39 @@ const FarmerSchema = new mongoose.Schema(
     },
 
     // WatermelonDB sync metadata
-    _status: String,
-    _changed: String,
-    updated_at: Number,
+    _status: {
+      type: String,
+      enum: ["created", "updated", "deleted"],
+      default: "created",
+    },
+    _changed: {
+      type: String,
+      default: "",
+    },
+    updated_at: {
+      type: Number,
+      default: () => Date.now(),
+    },
   },
   {
     timestamps: true,
   }
 );
+
+// 🔄 Middleware to auto-update sync metadata
+FarmerSchema.pre("save", function (next) {
+  this.updated_at = Date.now();
+
+  if (this.isNew) {
+    this._status = "created";
+  } else if (this.isModified()) {
+    // only flip to "updated" if not already "deleted"
+    if (this._status !== "deleted") {
+      this._status = "updated";
+    }
+  }
+
+  next();
+});
 
 module.exports = mongoose.model("Farmer", FarmerSchema);

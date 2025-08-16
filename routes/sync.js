@@ -1,7 +1,15 @@
+// routes/farmerSync.js
 const express = require("express");
 const Farmer = require("../models/Farmer");
 const router = express.Router();
 
+// Helper: Serialize farmer for sync
+const serialize = (doc) => {
+  const { _id, _status, _changed, __v, ...rest } = doc.toObject();
+  return { id: _id.toString(), ...rest };
+};
+
+// 🟢 Pull Changes
 // 🟢 Pull Changes
 router.get("/pull", async (req, res) => {
   const lastPulledAt = parseInt(req.query.lastPulledAt || "0", 10);
@@ -13,15 +21,19 @@ router.get("/pull", async (req, res) => {
 
   const serialize = (doc) => {
     const { _id, _status, _changed, __v, ...rest } = doc.toObject();
-    return { id: _id, ...rest };
+    return { id: _id.toString(), ...rest };
   };
 
   if (lastPulledAt === 0) {
-    // First-time sync: return all data as `created`
-    const allFarmers = await Farmer.find({});
+    // First-time sync: return all non-deleted as created
+    const allFarmers = await Farmer.find({ _status: { $ne: "deleted" } });
     created = allFarmers.map(serialize);
+
+    // Send deleted ones too
+    const deletedFarmers = await Farmer.find({ _status: "deleted" });
+    deleted = deletedFarmers.map((f) => f._id.toString());
   } else {
-    // Subsequent syncs: return only changes since lastPulledAt
+    // Return changes since lastPulledAt
     const changedFarmers = await Farmer.find({
       updated_at: { $gt: lastPulledAt },
     });
@@ -39,21 +51,15 @@ router.get("/pull", async (req, res) => {
       .map((f) => f._id.toString());
   }
 
-  const changes = {
-    farmers: {
-      created,
-      updated,
-      deleted,
-    },
-  };
-
-  res.json({ changes, timestamp });
+  res.json({
+    changes: { farmers: { created, updated, deleted } },
+    timestamp,
+  });
 });
 
-// 🔴 Push Changes (unchanged)
+// 🔴 Push Changes
 router.post("/push", async (req, res) => {
   const { changes } = req.body;
-
   const farmers = changes.farmers || {};
   const now = Date.now();
 
@@ -62,16 +68,32 @@ router.post("/push", async (req, res) => {
     ...(farmers.created || []),
     ...(farmers.updated || []),
   ]) {
-    // const cleaned = sanitizeFarmer(farmer);
-    await Farmer.findByIdAndUpdate(farmer._id, farmer, { upsert: true });
+    await Farmer.findByIdAndUpdate(
+      farmer.id,
+      { ...farmer, updated_at: now, _status: "updated" },
+      { upsert: true }
+    );
   }
 
-  // Handle deleted
+  // Handle deleted (soft delete)
   for (const id of farmers.deleted || []) {
-    await Farmer.findByIdAndDelete(id);
+    await Farmer.findByIdAndUpdate(id, {
+      _status: "deleted",
+      updated_at: now,
+    });
   }
 
   res.json({ success: true });
+});
+
+// 🧹 Cleanup Job (optional, run manually or via cron)
+router.delete("/cleanup", async (req, res) => {
+  const olderThan = Date.now() - 1000 * 60 * 60 * 24 * 30; // 30 days
+  const result = await Farmer.deleteMany({
+    _status: "deleted",
+    updated_at: { $lt: olderThan },
+  });
+  res.json({ cleaned: result.deletedCount });
 });
 
 module.exports = router;
