@@ -34,11 +34,13 @@ const FarmerSchema = new mongoose.Schema(
     crop_type: {
       type: String,
       trim: true,
+      default: "",
     },
     planting_date: Date,
     harvest_date: Date,
     farm_size: {
       type: String,
+      default: "",
     },
     input_supplied: {
       type: [String],
@@ -53,10 +55,12 @@ const FarmerSchema = new mongoose.Schema(
       coordinates: {
         type: [Number], // [longitude, latitude]
         index: "2dsphere",
+        default: [],
       },
       description: {
         type: String,
         trim: true,
+        default: "",
       },
     },
 
