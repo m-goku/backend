@@ -50,28 +50,35 @@ router.get("/pull", async (req, res) => {
   res.json({ changes, timestamp });
 });
 
-// 🔴 Push Changes (unchanged)
+// 🔴 Push Changes (fixed)
 router.post("/push", async (req, res) => {
-  const { changes } = req.body;
+  try {
+    const { changes } = req.body;
+    const farmers = changes.farmers || {};
 
-  const farmers = changes.farmers || {};
-  const now = Date.now();
+    // Handle created & updated
+    for (const farmer of [
+      ...(farmers.created || []),
+      ...(farmers.updated || []),
+    ]) {
+      const { id, ...rest } = farmer;
+      await Farmer.findByIdAndUpdate(
+        id,
+        { ...rest, updated_at: Date.now() },
+        { upsert: true, new: true }
+      );
+    }
 
-  // Handle created & updated
-  for (const farmer of [
-    ...(farmers.created || []),
-    ...(farmers.updated || []),
-  ]) {
-    // const cleaned = sanitizeFarmer(farmer);
-    await Farmer.findByIdAndUpdate(farmer._id, farmer, { upsert: true });
+    // Handle deleted
+    for (const id of farmers.deleted || []) {
+      await Farmer.findByIdAndDelete(id);
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error("❌ Push error:", err);
+    res.status(500).json({ error: err.message });
   }
-
-  // Handle deleted
-  for (const id of farmers.deleted || []) {
-    await Farmer.findByIdAndDelete(id);
-  }
-
-  res.json({ success: true });
 });
 
 module.exports = router;
